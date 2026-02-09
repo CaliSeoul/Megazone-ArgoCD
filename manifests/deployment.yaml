@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: "__IMAGE_URL__" # CI에서 자동으로 업데이트됩니다.
+          image: "161203794945.dkr.ecr.ap-southeast-2.amazonaws.com/seyachul9/argo:cea9e9b267c1cc735585f14bf7cbcb0c43fbe216" # CI에서 자동으로 업데이트됩니다.
           ports:
             - containerPort: 80
 ---
