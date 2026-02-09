@@ -1,0 +1,55 @@
+name: Build and Push Nginx to ECR
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'nginx/**' # nginx 폴더 내부의 변경 사항만 감지
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Git 저장소에 다시 푸시하기 위해 필요
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2 # 고객님의 리전으로 변경
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Nginx Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # ECR 레지스트리 URI (예: 123456789012.dkr.ecr.ap-southeast-2.amazonaws.com)
+          IMAGE_REPO: seyachul9/argo # 고객님의 ECR 리포지토리 이름
+          IMAGE_TAG: ${{ github.sha }} # Git 커밋 SHA를 이미지 태그로 사용
+        run: |
+          docker build -t $ECR_REGISTRY/$IMAGE_REPO:$IMAGE_TAG ./nginx
+          docker push $ECR_REGISTRY/$IMAGE_REPO:$IMAGE_TAG
+          echo "IMAGE_FULL_URI=$ECR_REGISTRY/$IMAGE_REPO:$IMAGE_TAG" >> $GITHUB_ENV # 다음 스텝에서 사용하기 위해 변수 저장
+
+      - name: Update Kubernetes Manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # manifests/deployment.yaml 파일의 이미지 태그 업데이트
+          # sed 명령어로 IMAGE_TAG_PLACEHOLDER를 실제 이미지 URI와 태그로 대체
+          sed -i "s|IMAGE_TAG_PLACEHOLDER|${{ env.IMAGE_TAG }}|g" manifests/deployment.yaml
+          
+          # 변경 사항이 있는지 확인
+          git diff --quiet manifests/deployment.yaml || (git add manifests/deployment.yaml && git commit -m "chore: Update image tag to ${{ env.IMAGE_TAG }}" && git push)
+        env:
+          # `GITHUB_TOKEN`은 GitHub Actions에서 자동으로 제공하는 토큰으로, 저장소에 푸시할 권한이 있습니다.
+          # `permissions` 섹션에 `contents: write`가 설정되어 있어야 합니다.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
