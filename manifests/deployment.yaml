@@ -16,8 +16,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          # ECR 리포지토리 URI와 이미지 태그는 CI 파이프라인에서 업데이트됩니다.
-          image: "/:"
+          image: "__IMAGE_URL__" # CI에서 자동으로 업데이트됩니다.
           ports:
             - containerPort: 80
 ---
@@ -28,7 +27,6 @@ metadata:
   labels:
     app: argo-nginx
 spec:
-  # ClusterIP 타입으로 설정하여 클러스터 내부용 서비스로 사용
   type: ClusterIP
   selector:
     app: argo-nginx
