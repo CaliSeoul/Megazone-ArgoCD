@@ -27,7 +27,8 @@ metadata:
   labels:
     app: argo-nginx
 spec:
-  type: ClusterIP
+  # instance 모드에서는 NodePort가 필수입니다.
+  type: NodePort
   selector:
     app: argo-nginx
   ports:
