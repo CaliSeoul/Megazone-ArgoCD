@@ -46,6 +46,7 @@ jobs:
 
       - name: Update Kubernetes Manifests (ArgoCD Trigger)
         env:
+          # 여기서 사용할 정보들을 환경변수로 명시해줍니다.
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_REPO: seyachul9/argo
           IMAGE_TAG: ${{ github.sha }}
@@ -54,17 +55,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 여기서 변수를 직접 조합해서 바로 꽂아넣습니다.
-          FULL_IMAGE="${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}"
-          echo "DEBUG: Replacing __IMAGE_URL__ with $FULL_IMAGE"
+          # [가장 확실한 방법] 쉘 변수를 사용하여 주소를 조합합니다.
+          FULL_IMAGE="${ECR_REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
+          echo "DEBUG: Target Image URI is $FULL_IMAGE"
           
+          # manifests 폴더 내 모든 파일에서 __IMAGE_URL__을 실제 주소로 바꿉니다.
           find manifests -name "*.y*ml" -exec sed -i "s|__IMAGE_URL__|$FULL_IMAGE|g" {} +
+          
+          # 제대로 바뀌었는지 로그로 확인
+          echo "--- Updated Manifest ---"
+          cat manifests/deployment.yaml | grep "image:"
           
           git add manifests/*.y*ml
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: Auto-deploy update image tag to ${{ env.IMAGE_TAG }} [skip ci]"
+            git commit -m "chore: Auto-deploy update image tag to ${IMAGE_TAG} [skip ci]"
             git pull --rebase origin main
             git push origin main
           fi
