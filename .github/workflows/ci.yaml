@@ -45,27 +45,25 @@ jobs:
           echo "IMAGE_FULL_URI=$ECR_REGISTRY/$IMAGE_REPO:$IMAGE_TAG" >> $GITHUB_ENV # 다음 스텝에서 사용하기 위해 변수 저장
 
       - name: Update Kubernetes Manifests (ArgoCD Trigger)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_REPO: seyachul9/argo
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # 디버깅을 위한 환경 변수 출력
-          echo "DEBUG: ECR_REGISTRY=${{ env.ECR_REGISTRY }}"
-          echo "DEBUG: IMAGE_REPO=${{ env.IMAGE_REPO }}"
-          echo "DEBUG: IMAGE_TAG=${{ env.IMAGE_TAG }}"
 
-          # [최종 수정된 부분!] manifests 폴더 내의 .yaml과 .yml 파일을 찾아 이미지 태그를 업데이트
-          # 따옴표를 포함한 이미지 전체를 정확하게 매칭하고 교체합니다.
-          find manifests -name "*.y*ml" -exec sed -i "s|image: \"${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:.*\"|image: \"${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}\"|g" {} +
+          # 여기서 변수를 직접 조합해서 바로 꽂아넣습니다.
+          FULL_IMAGE="${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}"
+          echo "DEBUG: Replacing __IMAGE_URL__ with $FULL_IMAGE"
           
-          # 변경 사항이 있는지 확인 후 커밋 (변경 사항 없으면 건너뜀)
+          find manifests -name "*.y*ml" -exec sed -i "s|__IMAGE_URL__|$FULL_IMAGE|g" {} +
+          
+          git add manifests/*.y*ml
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git add manifests/*.y*ml
             git commit -m "chore: Auto-deploy update image tag to ${{ env.IMAGE_TAG }} [skip ci]"
-
-            # 다른 작업과 충돌 방지를 위해 pull 후 push 합니다.
             git pull --rebase origin main
             git push origin main
           fi
