@@ -36,8 +36,8 @@ jobs:
 
       - name: Build & Push Nginx Image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # ECR 레지스트리 URI (예: 123456789012.dkr.ecr.ap-southeast-2.amazonaws.com)
-          IMAGE_REPO: seyachul9/argo # 고객님의 ECR 리포지토리 이름
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_REPO: seyachul9/argo
           IMAGE_TAG: ${{ github.sha }} # Git 커밋 SHA를 이미지 태그로 사용
         run: |
           docker build -t $ECR_REGISTRY/$IMAGE_REPO:$IMAGE_TAG ./nginx
@@ -49,15 +49,23 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # [최종 수정] 따옴표가 있어도 없어도 이미지 주소를 찾아 태그를 업데이트합니다.
-          find manifests -name "*.y*ml" -exec sed -i "s|image:.*${{ env.IMAGE_REPO }}.*|image: \"${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}\"|g" {} +
+          # 디버깅을 위한 환경 변수 출력
+          echo "DEBUG: ECR_REGISTRY=${{ env.ECR_REGISTRY }}"
+          echo "DEBUG: IMAGE_REPO=${{ env.IMAGE_REPO }}"
+          echo "DEBUG: IMAGE_TAG=${{ env.IMAGE_TAG }}"
+
+          # [최종 수정된 부분!] manifests 폴더 내의 .yaml과 .yml 파일을 찾아 이미지 태그를 업데이트
+          # 따옴표를 포함한 이미지 전체를 정확하게 매칭하고 교체합니다.
+          find manifests -name "*.y*ml" -exec sed -i "s|image: \"${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:.*\"|image: \"${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}\"|g" {} +
           
-          # 변경 사항을 스테이징하고, 실제로 바뀐 게 있을 때만 커밋/푸시합니다.
-          git add manifests/*.y*ml
-          if git diff --cached --quiet; then
+          # 변경 사항이 있는지 확인 후 커밋 (변경 사항 없으면 건너뜀)
+          if git diff --staged --quiet; then
             echo "No changes to commit"
           else
+            git add manifests/*.y*ml
             git commit -m "chore: Auto-deploy update image tag to ${{ env.IMAGE_TAG }} [skip ci]"
+
+            # 다른 작업과 충돌 방지를 위해 pull 후 push 합니다.
             git pull --rebase origin main
             git push origin main
           fi
