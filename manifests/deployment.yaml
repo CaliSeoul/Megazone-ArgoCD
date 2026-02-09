@@ -17,7 +17,7 @@ spec:
       containers:
         - name: nginx
           # ECR 리포지토리 URI와 이미지 태그는 CI 파이프라인에서 업데이트됩니다.
-          image: "161203794945.dkr.ecr.ap-southeast-2.amazonaws.com/seyachul9/argo:IMAGE_TAG_PLACEHOLDER" # 따옴표 추가
+          image: "/:"
           ports:
             - containerPort: 80
 ---
