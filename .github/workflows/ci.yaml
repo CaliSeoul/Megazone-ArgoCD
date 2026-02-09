@@ -49,9 +49,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # manifests 폴더 내의 모든 .yaml과 .yml 파일을 찾아서 이미지 업데이트
-          # sed 명령어로 IMAGE_TAG_PLACEHOLDER를 실제 이미지 URI와 태그로 대체
-          find manifests -name "*.y*ml" -exec sed -i "s|IMAGE_TAG_PLACEHOLDER|${{ env.IMAGE_TAG }}|g" {} +
+          # [수정된 부분!] manifests 폴더 내의 모든 .yaml과 .yml 파일을 찾아 이미지 태그를 업데이트
+          find manifests -name "*.y*ml" -exec sed -i "s|image: ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:.*|image: ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}|g" {} +
           
           # 변경 사항이 있는지 확인 후 커밋 (변경 사항 없으면 건너뜀)
           if git diff --staged --quiet; then
