@@ -49,18 +49,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # [수정된 부분!] manifests 폴더 내의 모든 .yaml과 .yml 파일을 찾아 이미지 태그를 업데이트
-          find manifests -name "*.y*ml" -exec sed -i "s|image: ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:.*|image: ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}|g" {} +
+          # [최종 수정] 따옴표가 있어도 없어도 이미지 주소를 찾아 태그를 업데이트합니다.
+          find manifests -name "*.y*ml" -exec sed -i "s|image:.*${{ env.IMAGE_REPO }}.*|image: \"${{ env.ECR_REGISTRY }}/${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}\"|g" {} +
           
-          # 변경 사항이 있는지 확인 후 커밋 (변경 사항 없으면 건너뜀)
-          if git diff --staged --quiet; then
+          # 변경 사항을 스테이징하고, 실제로 바뀐 게 있을 때만 커밋/푸시합니다.
+          git add manifests/*.y*ml
+          if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git add manifests/*.y*ml # 변경된 yaml 파일들만 스테이징
-            # [skip ci]를 넣어 자동화 커밋이 다시 Action을 실행시키지 않게 합니다.
             git commit -m "chore: Auto-deploy update image tag to ${{ env.IMAGE_TAG }} [skip ci]"
-
-            # 다른 작업과 충돌 방지를 위해 pull 후 push 합니다.
             git pull --rebase origin main
             git push origin main
           fi
